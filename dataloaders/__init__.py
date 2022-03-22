@@ -1,0 +1,1 @@
+from dataloaders.dataloader import REGISTRY as DATALOADERS_REGISTRY

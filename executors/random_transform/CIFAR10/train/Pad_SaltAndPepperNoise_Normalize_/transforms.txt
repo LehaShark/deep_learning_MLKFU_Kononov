@@ -1,0 +1,3 @@
+Pad(padding=(2, 2), padding_mode=constant, save_size=True, interpolation=BILINEAR)
+SaltAndPepperNoise(threshold=0.01, lowerValue=5, upperValue=250, normalize=False)
+Normalize(mean=127.0, std=255.0)
