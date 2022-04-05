@@ -1,0 +1,4 @@
+RandomCrop(size=30, save_size=True, interpolation=BILINEAR)
+RandomAffine(degrees=(-15.0, 15.0), translate=(0.0, 0.15),scale=(0.9, 1.0), shear=None)
+SaltAndPepperNoise(threshold=0.01, lowerValue=5, upperValue=250, normalize=False)
+Normalize(mean=0.0, std=255.0)

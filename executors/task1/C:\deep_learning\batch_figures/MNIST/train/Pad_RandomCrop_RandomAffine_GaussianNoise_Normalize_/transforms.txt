@@ -1,0 +1,5 @@
+Pad(padding=(2, 2), padding_mode=constant, save_size=True, interpolation=BILINEAR)
+RandomCrop(size=24, save_size=True, interpolation=BILINEAR)
+RandomAffine(degrees=(0.0, 15.0), translate=(0.0, 0.15),scale=(0.9, 1.0), shear=None)
+GaussianNoise(mean=127, std=255)
+Normalize(mean=127.0, std=255.0)

@@ -8,6 +8,7 @@ class InterpolationMode(Enum):
     BICUBIC = cv2.INTER_CUBIC
     LANCZOS = cv2.INTER_LANCZOS4
 
+
 class Transform(object):
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)

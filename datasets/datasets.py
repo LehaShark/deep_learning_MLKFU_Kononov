@@ -31,7 +31,7 @@ class MNIST(Dataset):
         data = []
         for key, path in self.data_path.items():
             with open(path, "rb") as file:
-                file_data_count = int.from_bytes(file.read(4), 'big')
+                magic_number = int.from_bytes(file.read(4), 'big')
                 file_data_count = int.from_bytes(file.read(4), 'big')
                 shape = (file_data_count, int.from_bytes(file.read(4), 'big'), int.from_bytes(file.read(4), 'big')) \
                     if key == 'input' else file_data_count
@@ -41,7 +41,6 @@ class MNIST(Dataset):
         return data[0].astype(np.float32), data[1].astype(np.int32)
 
     def _download_dataset(self):
-        # dpath = self.data_path.items()[1]
         os.makedirs(self.path, exist_ok=True)
         for key, path in self.data_path.items():
             if not os.path.exists(os.path.join(self.path, self.data_name)) or os.path.exists(os.path.join(self.path, self.label_name)):
@@ -52,7 +51,6 @@ class MNIST(Dataset):
         self._save_mnist()
 
     def _save_mnist(self):
-
         un_gz(self.path + self.data_name)
         un_gz(self.path + self.label_name)
         print("Save complete.")
@@ -60,7 +58,7 @@ class MNIST(Dataset):
 
 @REGISTRY.register_module
 class CIFAR10(Dataset):
-    def __init__(self, path, is_train, transform, target_transform):
+    def __init__(self, path, is_train, transform=None, target_transform=None):
         with open(os.path.join(path, 'batches.meta'), 'rb') as file:
             data = pickle.load(file, encoding='latin1')
             classes = data['label_names']

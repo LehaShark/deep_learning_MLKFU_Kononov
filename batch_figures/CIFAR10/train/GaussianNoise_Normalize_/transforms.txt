@@ -1,0 +1,2 @@
+GaussianNoise(mean=127, std=255)
+Normalize(mean=127.0, std=255.0)

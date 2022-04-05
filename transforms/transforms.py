@@ -67,8 +67,8 @@ class ToOneHot(Transform):
 class Pad(Transform):
     def __init__(self, padding, padding_mode="constant", save_size=False, interpolation=InterpolationMode.BILINEAR):
 
-        # if padding_mode not in ["constant", "edge", "reflect", "symmetric"]:
-        #     raise ValueError("Padding mode should be either constant, edge, reflect or symmetric")
+        if padding_mode not in ["constant", "edge", "reflect", "symmetric"]:
+            raise ValueError("Padding mode should be either constant, edge, reflect or symmetric")
 
         if isinstance(padding, Sequence) and len(padding) not in [1, 2, 4]:
             raise ValueError("Padding must be an int or a 1, 2, or 4 element tuple, not a " +
@@ -101,6 +101,134 @@ class Pad(Transform):
     def __repr__(self):
         return self.__class__.__name__ + f'(padding={self.padding}, padding_mode={self.padding_mode}' \
                + (f', save_size={self.save_size}, interpolation={self._interpolation.name})' if self.save_size else ')')
+
+
+@REGISTRY.register_module
+class RandomCrop(Transform):
+
+    def __init__(self, size, save_size=False, interpolation=InterpolationMode.BILINEAR):
+        self.size = size
+        self.save_size = save_size
+        self._interpolation = interpolation
+
+    def forward(self, images):
+        height, width = images.shape[1:][:2]
+
+        crop_height, crop_width = self.size if hasattr(self.size, "__len__") else self.size, self.size
+
+        i = random.randint(0, height - crop_height) if height != crop_height else 0
+        j = random.randint(0, width - crop_width) if width != crop_width else 0
+        images = images[:, i:i + crop_height, j:j + crop_width, ...]
+
+        if self.save_size:
+            images = np.array([cv2.resize(img, (width, height),
+                                          interpolation=self._interpolation.value)
+                               for img in images])
+        return images
+
+    def __repr__(self):
+        return self.__class__.__name__ + f"(size={self.size}" \
+               + (f', save_size={self.save_size}, interpolation={self._interpolation.name})' if self.save_size else ')')
+
+
+@REGISTRY.register_module
+class Resize(Transform):
+
+    def __init__(self, size, interpolation=InterpolationMode.BILINEAR):
+        super().__init__()
+        if not isinstance(size, (int, Sequence)):
+            raise TypeError("Size should be int or sequence. Got {}".format(type(size)))
+        if isinstance(size, Sequence) and len(size) not in (1, 2):
+            raise ValueError("If size is a sequence, it should have 1 or 2 values")
+
+        self.scale = (None, None)
+
+        if isinstance(size, int):
+            self.size = size, size
+        else:
+            if len(size) == 1:
+                if isinstance(size[0], int):
+                    self.size = size, size
+                else:
+                    self.size = 0, 0
+                    self.scale = size, size
+            else:
+                if isinstance(size[0], float) or isinstance(size[1], float):
+                    self.size = 0, 0
+                    self.scale = size
+                else:
+                    self.size = size
+
+        self.interpolation = interpolation
+
+    def forward(self, images):
+        return np.array([cv2.resize(img, self.size,
+                                    fx=self.scale[0],
+                                    fy=self.scale[1],
+                                    interpolation=self.interpolation.value)
+                         for img in images])
+
+    def __repr__(self):
+        return self.__class__.__name__ + f'(size={self.size}, interpolation={self.interpolation.name})'
+
+
+@REGISTRY.register_module
+class RandomAffine(Transform):
+    def __init__(self, degrees, translate=None, scale=None, shear=None):
+        self.degrees = tuple(float(d) for d in sorted(degrees if hasattr(degrees, "__len__") else (-degrees, degrees)))
+
+        if translate is not None:
+            for t in translate:
+                if not (0.0 <= t <= 1.0):
+                    raise ValueError("translation values should be in [0; 1] range")
+        self.translate = translate
+
+        if scale is not None:
+            for s in scale:
+                if s <= 0:
+                    raise ValueError("scale values should be greater than 0")
+        self.scale = scale
+
+        self.shear = tuple(float(s) for s in sorted(shear if hasattr(shear, "__len__") else (-shear, shear))) \
+            if shear is not None else shear
+
+    def forward(self, images):
+        height, width = images.shape[1:][:2]
+        rot = math.radians(random.uniform(float(self.degrees[0]), float(self.degrees[1])))
+        scale = random.uniform(*self.scale) if self.scale is not None else 1.
+        center_x, center_y = width // 2, height // 2
+
+        if self.translate is not None:
+            max_dx, max_dy = float(self.translate[0] * width), float(self.translate[1] * height)
+            translate_x, translate_y = random.uniform(-max_dx, max_dx), random.uniform(-max_dy, max_dy)
+        else:
+            translate_x, translate_y = 0, 0
+
+        if self.shear is not None:
+            shear_x = random.uniform(*self.shear[:2])
+            shear_y = random.uniform(*self.shear[2:]) if len(self.shear) == 4 else 0
+            shear_x, shear_y = math.radians(shear_x), math.radians(shear_y)
+        else:
+            shear_x, shear_y = 0, 0
+
+        matrix = np.array([
+            -math.sin(rot - shear_y) * math.tan(shear_x) / math.cos(shear_y) + math.cos(rot),
+            math.cos(rot - shear_y) * math.tan(shear_x) / math.cos(shear_y) + math.sin(rot),
+            0.0,
+
+            -math.sin(rot - shear_y) / math.cos(shear_y),
+            math.cos(rot - shear_y) / math.cos(shear_y),
+            0.0
+        ], dtype=np.float32) / scale
+
+        matrix[2] += center_x - matrix[0] * (center_x + translate_x) - matrix[1] * (center_y + translate_y)
+        matrix[5] += center_y - matrix[3] * (center_x + translate_x) - matrix[4] * (center_y + translate_y)
+
+        return np.array([cv2.warpAffine(img, matrix.reshape(-1, 3), (width, height)) for img in images])
+
+    def __repr__(self):
+        return self.__class__.__name__ + f'(degrees={self.degrees}, translate={self.translate},' \
+                                         f'scale={self.scale}, shear={self.shear})'
 
 
 @REGISTRY.register_module
