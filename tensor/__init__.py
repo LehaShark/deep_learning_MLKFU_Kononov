@@ -1,1 +1,1 @@
-from tensor.tensor import Tensor, no_grad
+from tensor.tensor import Tensor, no_grad, Parameter

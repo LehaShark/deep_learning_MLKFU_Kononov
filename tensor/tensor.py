@@ -55,6 +55,10 @@ class Tensor(object):
         my_copy.grad_fn = self.grad_fn.copy() if self.grad_fn is not None else None
         return my_copy
 
+class Parameter(Tensor):
+    def __init__(self, x, dtype=None):
+        super().__init__(x, True, dtype)
+        self._optimize = True
 
 
 class no_grad:

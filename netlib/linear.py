@@ -1,7 +1,7 @@
 from enum import Enum
 import numpy as np
 from netlib.layer import Layer
-from tensor import Tensor
+from tensor import Parameter
 
 
 class InitializationType(Enum):
@@ -16,12 +16,14 @@ class InitializationType(Enum):
 class Linear(Layer):
     def __init__(self, input_shape, output_shape,
                  use_bias=True,
-                 initialization_type: InitializationType = InitializationType.NORMAL_XAVIER,
+                 initialization_type: InitializationType = InitializationType.UNIFORM_HE,
+                 regularization_type=None,
+                 weight_decay=None,
                  dtype=np.float32):
 
         super().__init__(input_shape, output_shape)
-        self.weight = Tensor(np.empty((input_shape, output_shape), dtype=dtype))
-        self.bias = Tensor(np.empty(output_shape, dtype=dtype) if use_bias else None)
+        self.weight = Parameter(np.empty((input_shape, output_shape), dtype=dtype))
+        self.bias = Parameter(np.empty(output_shape, dtype=dtype)) if use_bias else None
 
         self._initialization_type = initialization_type
         self.reset_parameters()
@@ -30,21 +32,20 @@ class Linear(Layer):
         if initialization_type is not None:
             self._initialization_type = initialization_type
         self._init_param(self.weight)
-        self._init_param(self.bias)
+        if self.bias is not None:
+            self._init_param(self.bias)
 
     def forward(self, x):
-        # todo: optional bias
-        return np.dot(x, self.weight.data) + self.bias.data
+        return np.dot(x, self.weight.data) + (self.bias.data if self.bias is not None else 0)
 
     def backward(self, dy):
-        # todo: optional bias
-        if self.weight.is_optimize:
-            self.weight.grad = np.dot(self._saved_input.T, dy)
-        if self.bias.is_optimize:
-            self.bias.grad = np.mean(dy)
+        self.weight.grad = np.dot(self._saved_input.T, dy)
+        if self.bias is not None:
+            self.bias.grad = np.sum(dy, axis=0)
         return np.dot(dy, self.weight.data.T)
 
     def _init_param(self, param, mu=0, scale=1, diff=1):
+        dtype = param.dtype
         shape = param.shape
         n, m, *_ = *shape, 0
         distrib, init_type = self._initialization_type.value
@@ -66,6 +67,9 @@ class Linear(Layer):
             l = np.sqrt(scale * diff)
             param.data = np.random.uniform(-l, l, shape)
 
-    def __repr__(self):
-        string = self.__class__.__name__ + f'(weight={self.weight.data.shape}, bias={self.bias.shape})'
-        return string
+    def __repr__(self) -> str:
+        return '{}(in_features={}, out_features={}, bias={})'.format(
+            type(self).__name__, self.input_shape, self.output_shape, self.bias is not None
+        )
+
+

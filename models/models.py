@@ -1,5 +1,7 @@
 from models.base import Model
 from netlib import Linear
+from netlib import LogSoftmax, ReLU
+from losses import NLLLoss
 from netlib.module import Module
 
 
@@ -18,6 +20,26 @@ class MLP(Model):
 
         return tensor
 
-    def __repr__(self):
-        string = '{' + ''.join(name.__repr__() + '\n' for name in self.__dict__.keys()) + '\n}'
-        return string
+    def __repr__(self) -> str:
+        return '{}(\n\t{})'.format(type(self).__name__,
+                                   ',\n\t'.join(module.__repr__() for module in self.__dict__.values()
+                                                if isinstance(module, Module)))
+
+    # def __repr__(self):
+    #     string = '{' + ''.join(name.__repr__() + '\n' for name in self.__dict__.keys()) + '\n}'
+    #     return string
+
+
+class Config:
+    def __init__(self, layers_shapes, layers_params):
+        self.layers_shapes = layers_shapes
+        self.layers_params = layers_params
+
+
+if __name__ == "__main__":
+    cfg = Config(layers_shapes=((28 * 28, 200), (200, 10)),
+                 layers_params=(dict(), dict()))
+    # activation = (LogSoftmax, )
+    activation = (ReLU(), LogSoftmax())
+
+    model = MLP(cfg, activation)

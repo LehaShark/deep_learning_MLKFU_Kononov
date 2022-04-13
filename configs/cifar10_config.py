@@ -3,6 +3,7 @@ from configs.base import DataConfig, DatasetConfig, ROOT_DIR
 
 class CIFAR10Config(DatasetConfig):
     def __init__(self, transforms_counter: int = None, aug: bool = True):
+        super().__init__()
         path = os.path.join(ROOT_DIR, "data/CIFAR10/")
         batch_size = 32
         img_shape = (32, 32, 3)
@@ -23,9 +24,10 @@ class CIFAR10Config(DatasetConfig):
 
         super().__init__(train=DataConfig(dataset=('CIFAR10', dict(path=path, is_train=True)),
                                           transform=('Compose', transform),
+                                          #target_transform=('ToOneHot', dict(num_classes=10)),
                                           dataloader=('DataLoader', dict(batch_size=batch_size))),
                          test=DataConfig(dataset=('CIFAR10', dict(path=path, is_train=False)),
-                                         transform=('Compose', ('Normalize', dict(mean=127, std=255))),
+                                         transform=('Normalize', dict(mean=127, std=255)),
                                          dataloader=('DataLoader', dict(batch_size=batch_size))),
                          img_shape=img_shape,
                          show_dataset=True,

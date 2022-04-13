@@ -42,15 +42,3 @@ class Tanh(Module):
 
     def backward(self, grad_output):
         return grad_output * (1 - np.tanh(self._saved_input) ** 2)
-
-
-@REGISTRY.register_module
-class Softmax(Module):
-    def forward(self, input_):
-        return f.softmax(input_)
-
-    def backward(self, grad_output):
-        grad = grad_output - grad_output
-        grad[grad == 0] = np.random.normal(0, 1e-30, grad[grad == 0].shape)
-
-        return grad

@@ -12,6 +12,7 @@ def softmax(x):
 
 
 def nll_loss(predictions, targets):
+    # idx or one_hot
     if predictions.shape == targets.shape:
         log_preds = targets * predictions
     else:
@@ -19,7 +20,7 @@ def nll_loss(predictions, targets):
             else (np.arange(predictions.shape[0]), targets)
         log_preds = predictions[indexes]
 
-    return -sum(log_preds) / predictions.shape[0]
+    return -sum(log_preds) / len(predictions)
 
 
 def cross_entropy(predictions, targets):

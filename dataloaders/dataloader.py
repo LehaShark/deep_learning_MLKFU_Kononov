@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from configs.base import ROOT_DIR
 from enum import Enum
 
-from datasets.base import Dataset
 from transforms.registry import Registry
 
 REGISTRY = Registry('dataloaders')
@@ -23,9 +22,6 @@ def _shuffle_dataset(dataset):
     indexes = np.random.permutation(indexes)
     dataset.data, dataset.targets = dataset.data[indexes], dataset.targets[indexes]
     return dataset
-
-
-
 
 
 @REGISTRY.register_module

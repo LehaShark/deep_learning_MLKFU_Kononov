@@ -1,16 +1,25 @@
+from abc import abstractmethod
 from netlib.layer import Layer
 from tensor import Tensor
 
 
 class Model(object):
-    def __init__(self):
-        self.requires_grad = True
+    def __init__(self, trainable: bool = True):
+        self.trainable = trainable
 
     def __call__(self, tensor, *args, **kwargs):
         if not isinstance(tensor, Tensor):
-            tensor = Tensor(tensor, requires_grad=self.requires_grad)
+            tensor = Tensor(tensor)
+        tensor.requires_grad = self.trainable
         return self.forward(tensor, *args, **kwargs)
 
+    def train(self):
+        self.trainable = True
+
+    def eval(self):
+        self.trainable = False
+
+    @abstractmethod
     def forward(self, *args, **kwargs):
         raise NotImplementedError()
 
@@ -29,6 +38,10 @@ class Model(object):
                 layer_name, type_name = name.split('.')
                 layer = getattr(self, layer_name)
                 setattr(layer, type_name, state[name])
+
+        # for name, param in self.named_parameters():
+        # for name, param in self.named_parameters():
+        #     layer, type = name.split('.')
 
     def parameters(self):
         for name, param in self.named_parameters():
