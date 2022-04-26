@@ -1,5 +1,7 @@
 import copy
 
+import numpy as np
+
 
 class Module(object):
     def __init__(self):
@@ -28,6 +30,14 @@ class Module(object):
 
         output.data = self.forward(tensor.data, *args, **kwargs)
         return output
+
+    # todo: check for maxpool
+    def _get_kernel_indexes(self, num_kernels, axis_length, stride: int, depth: int, repeat_axis):
+        idx = np.tile(np.arange(axis_length), num_kernels).reshape(-1, axis_length)
+        idx += stride * np.arange(num_kernels).reshape(-1, 1)
+
+        idx = np.tile(np.repeat(idx, axis_length, axis=repeat_axis), depth)
+        return np.repeat(idx, num_kernels, axis=0).reshape(-1) if repeat_axis == 1 else np.tile(idx.reshape(-1), num_kernels)
 
     def forward(self, *args, **kwargs):
         raise NotImplementedError()

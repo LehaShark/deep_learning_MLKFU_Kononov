@@ -55,6 +55,7 @@ class Tensor(object):
         my_copy.grad_fn = self.grad_fn.copy() if self.grad_fn is not None else None
         return my_copy
 
+
 class Parameter(Tensor):
     def __init__(self, x, dtype=None):
         super().__init__(x, True, dtype)
@@ -70,9 +71,3 @@ class no_grad:
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         self.model.requires_grad = True
-
-
-if __name__ == '__main__':
-    x = np.random.random((3, 2)) - 0.5
-    my_tensor = Tensor(x)
-    print(my_tensor)

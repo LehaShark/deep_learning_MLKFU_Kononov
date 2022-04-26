@@ -45,10 +45,6 @@ def main(dataset_config, model_config, logname, overfit_mode: bool = False):
 
     phase_keys = PhaseKeysDict(train=dataset_config.train_key, test=dataset_config.test_key)
 
-    # if dataset_config.show_dataset:
-    #     train_dataset.show_statistics()
-    #     test_dataset.show_statistics()
-
     epoch_manager = Epoch(model=model, criterion=criterion, optimizer=optimizer, writer=writer,
                                  dataloaders=dataloaders, phase_keys=phase_keys)
 

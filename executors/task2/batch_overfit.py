@@ -25,4 +25,4 @@ if __name__ == "__main__":
                                  num_layers=layers,
                                  layers_kwargs=kwargs,
                                  activation=activations)
-        main(data_config, model_config, 'overfit', overfit_mode=True)
+        main(data_config, model_config, 'overfit1111111', overfit_mode=True)
