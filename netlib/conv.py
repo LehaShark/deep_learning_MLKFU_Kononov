@@ -24,7 +24,7 @@ class BaseConvClass(Layer, ABC):
         self.dilation = dilation
         self._indexes = None
 
-        self.weight = Parameter(np.empty((self.output_depth, self.input_depth, self.kernel_size[0], self.kernel_size[1]), dtype=dtype))
+        self.weight = Parameter(np.empty((self.output_depth, self.input_depth, self.kernel_size, self.kernel_size), dtype=dtype))
         self.bias = Parameter(np.empty(output_depth, dtype=dtype)) if use_bias else None
         self._initialization_type = initialization_type
         self.reset_parameters()
@@ -41,10 +41,21 @@ class BaseConvClass(Layer, ABC):
 
         return padded_input
 
+    def __repr__(self):
+        s = ('{input_depth}, {output_depth}, kernel_size={kernel_size}'
+             ', stride={stride}')
+        if self.padding != 0:
+            s += ', padding={padding}'
+        if self.dilation != 1:
+            s += ', dilation={dilation}'
+        if self.bias is None:
+            s += ', bias=False'
+        return s.format(**self.__dict__)
+
 
 class Convolution(BaseConvClass):
-    def __init__(self):
-        super().__init__()
+    # def __init__(self, input_depth, output_depth):
+    #     super().__init__(input_depth=input_depth, output_depth=output_depth)
 
     def forward(self, input_):
         output = self._conv(input_, self.weight.data, self.bias.data, self.stride, self.padding)
@@ -55,21 +66,24 @@ class Convolution(BaseConvClass):
         grad_out_reshaped = grad_out.reshape(self.output_depth, -1)
         weights_reshaped = self.weight.data.reshape(self.output_depth, -1)
 
-        input_ = self._pad(self._saved_input, self.padding) if sum(self.padding) > 0 else self._saved_input
+        input_ = self._pad(self._saved_input, self.padding)
+
+        # if sum(self.padding) > 0 else self._saved_input
 
         input_kernels = input_[..., k, i, j].reshape(-1, np.prod((*self.kernel_size, self.input_depth)))
         self.weight.grad = np.dot(grad_out_reshaped, input_kernels).reshape(self.weight.shape)
 
-        grad = np.dot(weights_reshaped.T, grad_out_reshaped)
+        # grad = np.dot(weights_reshaped.T, grad_out_reshaped)
         zeros = np.zeros_like(input_)
         zeros[..., k, i, j] += np.dot(weights_reshaped.T, grad_out_reshaped).T.reshape((self._saved_input.shape[0], -1))
 
         if self.bias is not None:
-            self.bias.grad = grad_out.sum((0, 2, 3))
+            self.bias.grad = grad_out.sum((2, 3)).mean(0)
 
         return zeros[..., self.padding:-self.padding, self.padding:-self.padding]
 
     def _conv(self, input, kernel, bias=None, stride: int = 1, padding: int = 0):
+        input = self._pad(input, padding)
         _, _, input_height, input_width = input.shape
         count_kernels, kernel_depth, kernel_height, kernel_width = kernel.shape
         output_width = self._output_len(input_width, kernel_width, stride)
@@ -84,7 +98,7 @@ class Convolution(BaseConvClass):
         out = np.dot(kernel_shape, matrix)
 
         self._indexes = (k, i, j)
-        return out.reshape((count_kernels, -1, kernel_width, kernel_height)).transpose(1, 0, 2, 3)
+        return out.reshape((count_kernels, -1, output_width, output_height)).transpose(1, 0, 2, 3)
 
 
 

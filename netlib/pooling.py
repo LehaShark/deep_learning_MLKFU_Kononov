@@ -1,11 +1,12 @@
-from abc import ABC
-
 import numpy as np
+import torch.nn
 
 from netlib.module import Module
+from transforms.registry import Registry
 
+REGISTRY = Registry('activations')
 
-class Pooling(Module, ABC):
+class Pooling(Module):
 
     def __init__(self, kernel_size: int = None,
                  stride: int = None,
@@ -44,10 +45,11 @@ class Pooling(Module, ABC):
 
         return input_[..., i, j].reshape(batch_size, depth, output_h, output_w, kernel_h * kernel_w), (i, j)
 
-
-class MaxPool2d(Pooling):
-    def __init__(self):
-        super().__init__()
+# torch.nn.AvgPool2d
+@REGISTRY.register_module
+class MaxPool(Pooling):
+    # def __init__(self, kernel_size):
+    #     super().__init__(kernel_size=kernel_size)
 
     def forward(self, input_):
         if self.indexes is None:
@@ -61,9 +63,10 @@ class MaxPool2d(Pooling):
         i, j = self.indexes
         input_reshaped = self._saved_input[..., i, j].reshape((-1, np.prod(self.kernel_size)))
         grad = np.zeros_like(input_reshaped)
-        grad[np.arange(grad.shape[0]), grad.argmax(-1)] = grad_out.reshape(-1)
+        grad[np.arange(input_reshaped.shape[0]), input_reshaped.argmax(-1)] = grad_out.flatten()
 
-        return grad.reshape(self._saved_input.shape)
+        tensor = np.zeros_like(self._saved_input)
+        np.add.at(tensor, (slice(None), slice(None), i, j), grad.reshape((*self._saved_input.shape[:2], -1)))
 
     def _max_pool(self, input_, kernel_size, stride: tuple = None, indexes: tuple = None, return_indexes: bool = False):
         output, (i, j) = self._pooling(input_, kernel_size, stride, indexes)
@@ -73,26 +76,39 @@ class MaxPool2d(Pooling):
             return output, (i, j)
         return output
 
-
-class AvgPool2d(Pooling):
-    def __init__(self):
-        super().__init__()
+# torch.nn.AvgPool2d
+@REGISTRY.register_module
+class AvgPool(Pooling):
+    # def __init__(self):
+    #     super().__init__()
 
     def forward(self, input_):
         if self.indexes is None:
-            output, self.indexes = self.avg_pool(input_, self.kernel_size, self.stride, return_indexes=True)
+            output, self.indexes = self._avg_pool(input_, self.kernel_size, self.stride, return_indexes=True)
         else:
-            output = self.avg_pool(input_, self.kernel_size, self.stride, indexes=self.indexes)
+            output = self._avg_pool(input_, self.kernel_size, self.stride, indexes=self.indexes)
 
         return output
 
-    def backward(self, *args, **kwargs):
-        pass
+    def backward(self, grad_out):
+        i, j = self.indexes
+        kernel_size = np.prod(self.kernel_size)
+        grad = np.ones(self._saved_input.size).reshape((-1, kernel_size)) * grad_out.reshape(-1, 1) / kernel_size
 
-    def avg_pool(self, input_, kernel_size, stride: tuple = None, indexes: tuple = None, return_indexes: bool = False):
+        tensor = np.zeros_like(self._saved_input)
+        np.add.at(tensor, (slice(None), slice(None), i, j), grad.reshape((*self._saved_input.shape[:2], -1)))
+
+        return tensor
+
+    def _avg_pool(self, input_, kernel_size, stride: tuple = None, indexes: tuple = None, return_indexes: bool = False):
         output, (i, j) = self._pooling(input_, kernel_size, stride, indexes)
         output = output.mean(axis=-1)
 
         if return_indexes:
             return output, (i, j)
         return output
+
+
+if __name__ == '__main__':
+    prepared_input = np.random.rand(4, 8)
+    AvgPool.backward(AvgPool(), prepared_input)

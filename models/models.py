@@ -2,7 +2,9 @@ from models.base import Model
 from netlib import Linear
 from netlib import LogSoftmax, ReLU
 from losses import NLLLoss
+from netlib.conv import Convolution
 from netlib.module import Module
+from netlib.pooling import MaxPool
 
 
 class MLP(Model):
@@ -25,9 +27,39 @@ class MLP(Model):
                                    ',\n\t'.join(module.__repr__() for module in self.__dict__.values()
                                                 if isinstance(module, Module)))
 
-    # def __repr__(self):
-    #     string = '{' + ''.join(name.__repr__() + '\n' for name in self.__dict__.keys()) + '\n}'
-    #     return string
+
+
+
+class ConvNN(Model):
+    def __init__(self, cfg, activations: tuple = None):
+        super().__init__()
+        self.conv1 = Convolution(1, 16, kernel_size=5, stride=1)
+        self.conv2 = Convolution(16, 32, kernel_size=5, stride=1)
+        self.max_pool = MaxPool(2)
+        self.fc1 = Linear(32 * 7 * 7, 128)
+        self.fc2 = Linear(128, 10)
+        self.relu = ReLU()
+
+    def forward(self, tensor):
+        tensor = self.conv1(tensor)
+        tensor = self.relu(tensor)
+        tensor = self.max_pool(tensor)
+
+        tensor = self.conv2(tensor)
+        tensor = self.relu(tensor)
+        tensor = self.max_pool(tensor)
+
+        tensor = tensor.reshape(tensor.shape[0], -1)
+        tensor = self.fc1(tensor)
+        tensor = self.relu(tensor)
+        tensor = self.fc2(tensor)
+
+        return tensor
+
+    def __repr__(self) -> str:
+        return '{}(\n\t{})'.format(type(self).__name__,
+                                   ',\n\t'.join(module.__repr__() for module in self.__dict__.values()
+                                                if isinstance(module, Module)))
 
 
 class Config:

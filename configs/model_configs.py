@@ -1,7 +1,75 @@
+import os
+import time
+
 import numpy as np
 
 from configs.base import ModelConfig
 from netlib.linear import InitializationType
+from torch import nn
+
+
+class ConvNNConfig(ModelConfig):
+    def __init__(self,
+                 layers_dict=None,
+                 activation='ReLU',
+                 activation_kwargs=None,
+                 last_activation: bool = False,
+                 pooling='MaxPool2d',
+                 pooling_kwargs=None,
+                 criterion='CrossEntropyLoss',
+                 criterion_kwargs=None,
+                 image_shape=(32, 32)):
+        if layers_dict is None:
+            layers_dict = dict(Conv2d=(dict(input_depth=1, output_depth=16, kernel_shape=5),
+                                       dict(input_depth=16, output_depth=32, kernel_shape=5)))
+
+        out_image_shape = image_shape
+        for lay in layers_dict['Conv2d']:
+            kernel = lay['kernel_shape']
+            pad = lay['padding'] if 'padding' in lay else 0
+            stride = lay['stride'] if 'stride' in lay else 1
+
+            out_image_shape = (out_image_shape[0] - kernel + pad * 2) / stride + 1, \
+                              (out_image_shape[1] - kernel + pad * 2) / stride + 1
+            out_image_shape = out_image_shape[0] // 2, out_image_shape[1] // 2
+
+        if 'Linear' not in layers_dict:
+            fif = int(np.prod(out_image_shape) * layers_dict['Conv2d'][-1]['output_depth'])
+            layers_dict['Linear'] = (dict(input_features=fif, output_features=128),
+                                     dict(input_features=128, output_features=10))
+
+        if hasattr(activation, '__len__') and not isinstance(activation, str):
+            activation_kwargs = activation_kwargs if activation_kwargs is not None else [dict()] * len(activation)
+            activations = [(a, k) for a, k in zip(activation, activation_kwargs)]
+        else:
+            activations = [(activation, (activation_kwargs if activation_kwargs is not None else dict()))] * 2
+
+        super().__init__(layers_dict=layers_dict,
+                         epochs=20,
+                         lr=.001,
+                         activations=activations,
+                         criterion=(criterion, criterion_kwargs if criterion_kwargs is not None else dict()),
+                         momentum=0,
+                         last_activation=last_activation)
+        self._pooling = pooling, pooling_kwargs if pooling_kwargs is not None else dict(kernel_shape=2)
+
+        init_type = layers_dict['Conv2d'][0]['initialization_type'].name \
+            if 'initialization_type' in layers_dict['Conv2d'][0] is not None \
+            else InitializationType.NORMAL_XAVIER.name
+
+        self.experiment_name = 'num_convs={}_acts={}_init={}_{}'.format(
+            len(self.layers_dict['Conv2d']), activation, init_type, time.time()
+        )
+
+        self.SAVE_PATH = os.path.join(self.ROOT_DIR, 'checkpoints', type(self).__name__,
+                                      f'lr{self.lr}_' + self.experiment_name)
+
+        self.LOAD_PATH = os.path.join(self.ROOT_DIR, 'checkpoints', type(self).__name__,
+                                      'lr0.001_start_filters32_1651509451.4862506_overfitted_on_batch', '69.pth')
+
+    @property
+    def get_pooling(self):
+        return self._pooling
 
 
 class MLPConfig(ModelConfig):
@@ -13,14 +81,15 @@ class MLPConfig(ModelConfig):
                  activation_kwargs=None,
                  criterion='CrossEntropyLoss',
                  criterion_kwargs=None):
-        input_size = int(np.prod(np.array(input_size))) if len(input_size) > 1 else input_size
+        input_size = int(np.prod(np.array(input_size))) if hasattr(input_size, '__len__') and len(input_size) > 1 \
+            else input_size
         layers_shape, layers_params = get_layers_settings(input_size, output_size, hidden_neurons,
                                                           num_layers, layers_kwargs)
+        layers_dict = dict(Linear=tuple(zip(layers_shape, layers_params)))
         activations = get_activations(activation, activation_kwargs)
-        super().__init__(layers_shapes=layers_shape,
-                         layers_params=layers_params,
-                         epochs=10,
-                         lr=.01,
+        super().__init__(layers_dict=layers_dict,
+                         epochs=50,
+                         lr=.001,
                          activations=activations,
                          criterion=(criterion, criterion_kwargs if criterion_kwargs is not None else dict()),
                          momentum=0)

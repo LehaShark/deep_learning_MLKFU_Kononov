@@ -1,4 +1,5 @@
 import numpy as np
+import torch.nn
 
 from tensor import Tensor, Parameter
 from netlib.module import Module
@@ -11,6 +12,8 @@ class InitializationType(Enum):
     UNIFORM_HE = ('uniform', 'he')
     UNIFORM_XAVIER = ('uniform', 'xavier')
     UNIFORM_GLOROT = ('uniform', 'glorot')
+
+torch.nn.MaxPool2d
 
 class Layer(Module):
     def __init__(self, initialization_type):

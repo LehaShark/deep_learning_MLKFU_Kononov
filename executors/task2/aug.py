@@ -16,7 +16,7 @@ if __name__ == "__main__":
         model_config = MLPConfig(data_config.img_shape, 10,
                                  layers_kwargs=kwargs,
                                  activation=activations)
-        main(data_config, model_config, 'with_augs,')
+        main(data_config, model_config, 'with_augs1111111,')
 
 
 

@@ -1,10 +1,10 @@
 import os
-from configs.base import DataConfig, DatasetConfig, ROOT_DIR
+from configs.base import DataConfig, DatasetConfig
 
 class CIFAR10Config(DatasetConfig):
     def __init__(self, transforms_counter: int = None, aug: bool = True):
-        super().__init__()
-        path = os.path.join(ROOT_DIR, "data/CIFAR10/")
+        # super().__init__()
+        path = os.path.join("data/CIFAR10/")
         batch_size = 32
         img_shape = (32, 32, 3)
         transform = [('Pad', dict(padding=(2, 2), save_size=True), .5),

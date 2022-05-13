@@ -1,7 +1,8 @@
-from netlib.module import Module
 import os
+import time
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from netlib.module import Module
+
 
 class Config(object):
     def __init__(self):
@@ -57,14 +58,15 @@ class DatasetConfig(Config):
 
 
 class ModelConfig(Config):
-    def __init__(self, layers_shapes: tuple, layers_params: tuple, epochs: int, lr: float, momentum: float,
-                 activations: tuple, criterion: tuple):
+    def __init__(self, layers_dict, epochs: int, lr: float, momentum: float,
+                 activations: tuple, criterion: tuple, last_activation: bool):
         super().__init__()
-        self.layers_shapes = layers_shapes
-        self.layers_params = layers_params
+        self.layers_dict = layers_dict
         self.epochs = epochs
         self.lr = lr
         self.momentum = momentum
+        self.last_activation = last_activation
+
         self._activations = activations
         self._criterion = criterion
 

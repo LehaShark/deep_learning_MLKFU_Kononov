@@ -3,7 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from configs.base import ROOT_DIR
+# from configs.base import ROOT_DIR
 from enum import Enum
 
 from transforms.registry import Registry
@@ -106,13 +106,13 @@ class DataLoader(object):
             plt.imshow(img)
 
         if first_batch:
-            path = os.path.join(ROOT_DIR, 'batch_figures',
+            path = os.path.join('batch_figures',
                                 type(self.dataset).__name__,
                                 'first_batch')
             figname = str(counter) + '_' + ''.join(type(e).__name__ + '_' for e in self.dataset.transform.transforms) \
                 if self.dataset.transform else 'None'
         else:
-            path = os.path.join(ROOT_DIR, 'batch_figures',
+            path = os.path.join('batch_figures',
                                 type(self.dataset).__name__,
                                 'train' if self.dataset.is_train else 'test',
                                 ''.join(type(e).__name__ + '_' for e in self.dataset.transform.transforms)
